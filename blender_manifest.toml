@@ -1,0 +1,11 @@
+schema_version = "1.0.0"
+id = "cube_capture"
+version = "0.1.0"
+name = "Cube Capture"
+tagline = "Captures six orthographic views of the Blender scene"
+maintainer = "Hitokadoya"
+type = "add-on"
+blender_version_min = "4.5.0"
+license = ["SPDX:GPL-3.0-or-later"]
+website = "https://x.com/hitokadoya"
+copyright = ["2025 Hitokadoya"]
