@@ -20,6 +20,9 @@ _VIEW_DIRECTIONS: Dict[str, Tuple[Vector, Vector, int, Tuple[int, int]]] = {
     "BOTTOM": (Vector((0.0, 0.0, 1.0)), Vector((0.0, 1.0, 0.0)), 2, (0, 1)),
 }
 
+_TEMP_WORLD_BASENAME = "CubeCaptureFlatWorld"
+_TEMP_WORLD_ASSIGNMENTS: Dict[int, str] = {}
+
 
 @dataclass(frozen=True)
 class RenderSettingsBackup:
@@ -27,12 +30,14 @@ class RenderSettingsBackup:
     filepath: str
     resolution_x: int
     resolution_y: int
+    resolution_percentage: int
     film_transparent: bool
     image_settings: Tuple[str, str, str]
     camera_name: str | None
     use_nodes: bool
     background_color: Tuple[float, float, float]
     background_strength: float
+    world_name: str | None
 
 
 def backup_scene_settings(scene: bpy.types.Scene) -> RenderSettingsBackup:
@@ -40,6 +45,7 @@ def backup_scene_settings(scene: bpy.types.Scene) -> RenderSettingsBackup:
     background_color = (0.0, 0.0, 0.0)
     background_strength = 1.0
     use_nodes = False
+    world_name = world.name if world else None
     if world is not None:
         use_nodes = world.use_nodes
         if use_nodes and world.node_tree:
@@ -52,6 +58,7 @@ def backup_scene_settings(scene: bpy.types.Scene) -> RenderSettingsBackup:
         filepath=scene.render.filepath,
         resolution_x=scene.render.resolution_x,
         resolution_y=scene.render.resolution_y,
+        resolution_percentage=scene.render.resolution_percentage,
         film_transparent=scene.render.film_transparent,
         image_settings=(
             scene.render.image_settings.file_format,
@@ -62,6 +69,7 @@ def backup_scene_settings(scene: bpy.types.Scene) -> RenderSettingsBackup:
         use_nodes=use_nodes,
         background_color=background_color,
         background_strength=background_strength,
+        world_name=world_name,
     )
 
 
@@ -70,12 +78,17 @@ def restore_scene_settings(scene: bpy.types.Scene, backup: RenderSettingsBackup)
     scene.render.filepath = backup.filepath
     scene.render.resolution_x = backup.resolution_x
     scene.render.resolution_y = backup.resolution_y
+    scene.render.resolution_percentage = backup.resolution_percentage
     scene.render.film_transparent = backup.film_transparent
     scene.render.image_settings.file_format = backup.image_settings[0]
     scene.render.image_settings.color_mode = backup.image_settings[1]
     scene.render.image_settings.color_depth = backup.image_settings[2]
     if backup.camera_name and backup.camera_name in bpy.data.objects:
         scene.camera = bpy.data.objects[backup.camera_name]
+    original_world = bpy.data.worlds.get(backup.world_name) if backup.world_name else None
+    scene.world = original_world
+    scene_key = scene.as_pointer()
+    temp_world_name = _TEMP_WORLD_ASSIGNMENTS.pop(scene_key, None)
     world = scene.world
     if world and world.use_nodes and world.node_tree:
         background = world.node_tree.nodes.get("Background")
@@ -84,6 +97,10 @@ def restore_scene_settings(scene: bpy.types.Scene, backup: RenderSettingsBackup)
             background.inputs[1].default_value = backup.background_strength
     elif world and not backup.use_nodes:
         world.use_nodes = False
+    if temp_world_name:
+        temp_world = bpy.data.worlds.get(temp_world_name)
+        if temp_world and temp_world.users == 0:
+            bpy.data.worlds.remove(temp_world, do_unlink=True)
 
 
 def _select_eevee_engine() -> str | None:
@@ -120,20 +137,18 @@ def ensure_flat_lighting(scene: bpy.types.Scene) -> None:
         if hasattr(eevee_settings, "use_soft_shadows"):
             eevee_settings.use_soft_shadows = False
 
-    world = scene.world or bpy.data.worlds.new("CubeCaptureWorld")
-    if scene.world is None:
-        scene.world = world
-    world.use_nodes = True
-    node_tree = world.node_tree
-    background = node_tree.nodes.get("Background")
-    if background is None:
-        background = node_tree.nodes.new(type="ShaderNodeBackground")
+    temp_world = bpy.data.worlds.new(_TEMP_WORLD_BASENAME)
+    temp_world.use_nodes = True
+    node_tree = temp_world.node_tree
+    node_tree.nodes.clear()
+    background = node_tree.nodes.new(type="ShaderNodeBackground")
     background.inputs[0].default_value = (1.0, 1.0, 1.0, 1.0)
     background.inputs[1].default_value = 1.0
-    output = node_tree.nodes.get("World Output")
-    if output is None:
-        output = node_tree.nodes.new(type="ShaderNodeOutputWorld")
+    output = node_tree.nodes.new(type="ShaderNodeOutputWorld")
     node_tree.links.new(background.outputs[0], output.inputs[0])
+
+    scene.world = temp_world
+    _TEMP_WORLD_ASSIGNMENTS[scene.as_pointer()] = temp_world.name
 
 
 def _orthographic_camera_matrix(location: Vector, direction: Vector, up: Vector) -> Matrix:
@@ -194,3 +209,4 @@ def prepare_output_path(base_directory: str, filename: str) -> str:
 def apply_render_resolution(scene: bpy.types.Scene, width: int, height: int) -> None:
     scene.render.resolution_x = width
     scene.render.resolution_y = height
+    scene.render.resolution_percentage = 100
