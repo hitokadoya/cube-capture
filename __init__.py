@@ -14,7 +14,7 @@ bl_info = {
     "author": "cube-capture Contributors",
     "version": (0, 1, 0),
     "blender": (4, 5, 0),
-    "location": "View3D > Sidebar > Render",
+    "location": "View3D > Sidebar > Cube Capture",
     "description": "Captures six orthographic views of the Blender scene.",
     "category": "Render",
 }
