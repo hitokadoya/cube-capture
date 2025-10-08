@@ -12,7 +12,7 @@ class CUBECAPTURE_PT_panel(bpy.types.Panel):
     bl_label = "Cube Capture"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "Render"
+    bl_category = "Cube Capture"
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
