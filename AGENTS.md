@@ -1,7 +1,7 @@
 # Agent Guidelines
 
 ## Mission
-This repository hosts an open source Blender add-on that generates three-view renders for the currently selected collection.
+This repository hosts an open source Blender add-on that generates orthographic reference renders for the currently selected collection.
 
 ## Communication Rules
 - Agents must reason in English while composing responses.
@@ -9,7 +9,7 @@ This repository hosts an open source Blender add-on that generates three-view re
 - All repository documentation must be written in English.
 
 ## Rendering Requirements
-- Produce orthographic front, side, and top views for the active collection.
+- Produce the orthographic view selected in the add-on (front, back, left, right, top, or bottom) for the active collection.
 - Render with a transparent background to simplify downstream compositing.
 - Use the Eevee engine to prioritize fast turnaround over path-traced accuracy.
 - Configure lighting for a flat, neutral look that preserves surface color without directional shadows.
